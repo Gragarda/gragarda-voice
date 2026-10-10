@@ -66,6 +66,8 @@ target_link_libraries(gragarda-voice PRIVATE OBS::libobs gv_dsp Qt6::Widgets)
 set_target_properties(gragarda-voice PROPERTIES PREFIX "")
 if(MSVC)
   target_compile_options(gragarda-voice PRIVATE /W4 /fp:fast)
+  # Nom du .pdb seul dans la DLL publiee, pas le chemin du PC de build
+  target_link_options(gragarda-voice PRIVATE /PDBALTPATH:%_PDB%)
 endif()
 
 # ---- Installation / paquet, par OS

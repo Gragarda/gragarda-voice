@@ -62,6 +62,7 @@ The DSP core (`dsp/`) does not depend on OBS.
   git clone https://github.com/Rikorose/DeepFilterNet.git
   cd DeepFilterNet
   git checkout d375b2d   # version used for v0.1.0
+  set RUSTFLAGS=--remap-path-prefix=%USERPROFILE%=~
   cargo build --release -p deep_filter --no-default-features --features capi --lib
   ```
 
@@ -174,6 +175,7 @@ Le cœur DSP (`dsp/`) ne dépend pas d'OBS.
   git clone https://github.com/Rikorose/DeepFilterNet.git
   cd DeepFilterNet
   git checkout d375b2d   # version utilisée pour v0.1.0
+  set RUSTFLAGS=--remap-path-prefix=%USERPROFILE%=~
   cargo build --release -p deep_filter --no-default-features --features capi --lib
   ```
 
