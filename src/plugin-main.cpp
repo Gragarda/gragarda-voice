@@ -10,7 +10,7 @@ bool obs_module_load(void)
 {
     gragarda_voice_register_info();
     obs_register_source(&gragarda_voice_filter_info);
-    blog(LOG_INFO, "[gragarda-voice] charge (v0.2.0)");
+    blog(LOG_INFO, "[gragarda-voice] charge (v0.3.0)");
     return true;
 }
 

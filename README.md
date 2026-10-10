@@ -1,7 +1,12 @@
 # Gragarda Voice — all-in-one voice filter for OBS (Windows)
 
 One OBS filter that runs a full pro voice-studio chain, set up in 20 seconds by a calibration wizard.
-The interface follows OBS's language (English by default, French included).
+The interface follows OBS's language: 34 languages included (English by default for the others).
+
+Translations: English, French, German, Spanish, Italian, Portuguese (Brazil and Portugal), Dutch, Polish,
+Russian, Ukrainian, Turkish, Japanese, Korean, Chinese (Simplified and Traditional), Swedish, Danish, Norwegian,
+Finnish, Czech, Slovak, Hungarian, Romanian, Greek, Bulgarian, Croatian, Catalan, Indonesian, Vietnamese, Thai,
+Arabic, Hebrew, Hindi. Fixes welcome: edit `data/locale/<lang>.ini` (check with `python tests/check_locales.py`).
 
 ## Features
 - **AI noise removal**: DeepFilterNet 3 (Max quality, 41.5 ms) or RNNoise (Fast, 21.5 ms). Fixed, displayed latency.
