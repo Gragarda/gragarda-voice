@@ -34,8 +34,13 @@ d'un studio pro en un seul filtre, utilisable par n'importe qui (assistant de ca
 4. [x] Macros (0-100, 50 = reference) + destination (leveler : Stream -14 / Podcast -16 / Voix-off -18 LUFS) + panneau — valide
 5. [x] (correction micro cachee : EQ grave/presence/aigus pose par la calibration) Analyseur (dsp/Calibration) + assistant Qt (src/calibration-dialog.cpp) + 4 voyants — profil LTASS de reference a recaler avec les rapports reels (log OBS "[gragarda-voice] calibration")
 6. [x] Avant/apres a volume compense (case Bypass), sync auto (bouton, confirmation Qt), detection des doublons (avertissement + bouton), installeur Inno Setup (installer/) — a valider a l'ecoute/usage
-7. [~] Presets : liste "Preset" + Enregistrer/Supprimer dans le filtre (cle "presets" = tableau {name, values}).
-   Charge quand le nom change (UI ou obs-websocket SetSourceFilterSettings {"preset": "Nom"}) — a valider
+7. [x] Presets : liste "Preset" + Enregistrer/Supprimer dans le filtre (cle "presets" = tableau {name, values}).
+   Charge quand le nom change (UI ou obs-websocket SetSourceFilterSettings {"preset": "Nom"}) — valide
+
+## Publication
+- Depot public : https://github.com/Gragarda/gragarda-voice (GPL-2.0-or-later). v0.1.0 publiee (installeur en Release).
+- Nouvelle version : bump AppVersion (installer/*.iss) + version dans plugin-main.cpp/CMakeLists, build, ISCC,
+  `gh release create vX.Y.Z build/installer/...setup.exe`. Regenerer licenses/rust-crates.txt si DeepFilterNet change.
 
 ## Build
 Voir README.md (libobs compile depuis les sources d'OBS, meme version que l'OBS installe).
