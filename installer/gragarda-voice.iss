@@ -1,7 +1,7 @@
-; Installeur Gragarda Voice (Inno Setup 6). Build : ISCC installer\gragarda-voice.iss  (apres cmake --build)
+﻿; Installeur Gragarda Voice (Inno Setup 6). Build : ISCC installer\gragarda-voice.iss  (apres cmake --build)
 ; Installe dans le dossier d'OBS trouve dans le registre (HKLM\SOFTWARE\OBS Studio), modifiable par l'utilisateur.
 
-#define AppVersion "0.1.0"
+#define AppVersion "0.2.0"
 #define Build "..\build\RelWithDebInfo"
 #define Model "..\..\DeepFilterNet\models\DeepFilterNet3_onnx.tar.gz"
 
@@ -25,8 +25,15 @@ SolidCompression=yes
 UninstallFilesDir={app}\data\obs-plugins\gragarda-voice\uninstall
 
 [Languages]
-Name: "fr"; MessagesFile: "compiler:Languages\French.isl"
+; anglais par defaut, francais si Windows est en francais
 Name: "en"; MessagesFile: "compiler:Default.isl"
+Name: "fr"; MessagesFile: "compiler:Languages\French.isl"
+
+[CustomMessages]
+en.ObsRunning=OBS is running: close it, then run the installer again.
+fr.ObsRunning=OBS est ouvert : ferme-le puis relance l'installation.
+en.ObsMissing=OBS was not found in this folder (bin\64bit\obs64.exe). Continue anyway?
+fr.ObsMissing=OBS introuvable dans ce dossier (bin\64bit\obs64.exe). Continuer quand même ?
 
 [Files]
 Source: "{#Build}\gragarda-voice.dll"; DestDir: "{app}\obs-plugins\64bit"; Flags: ignoreversion
@@ -49,13 +56,12 @@ begin
   Result := '';
   if Exec('cmd.exe', '/c tasklist /FI "IMAGENAME eq obs64.exe" | find /I "obs64.exe"', '', SW_HIDE,
           ewWaitUntilTerminated, Code) and (Code = 0) then
-    Result := 'OBS est ouvert : ferme-le puis relance l''installation. / OBS is running: close it and retry.';
+    Result := CustomMessage('ObsRunning');
 end;
 
 function NextButtonClick(CurPageID: Integer): Boolean;
 begin
   Result := True;
   if (CurPageID = wpSelectDir) and not FileExists(AddBackslash(WizardDirValue) + 'bin\64bit\obs64.exe') then
-    Result := MsgBox('OBS introuvable dans ce dossier (bin\64bit\obs64.exe). Continuer quand meme ?',
-                     mbConfirmation, MB_YESNO) = IDYES;
+    Result := MsgBox(CustomMessage('ObsMissing'), mbConfirmation, MB_YESNO) = IDYES;
 end;

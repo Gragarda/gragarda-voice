@@ -1,35 +1,48 @@
-# Gragarda Voice — filtre voix tout-en-un pour OBS (Windows)
+# Gragarda Voice — all-in-one voice filter for OBS (Windows)
 
-Un seul filtre OBS qui applique toute la chaîne de traitement d'un studio voix pro, réglé en 20 secondes
-par un assistant de calibration.
+One OBS filter that runs a full pro voice-studio chain, set up in 20 seconds by a calibration wizard.
+The interface follows OBS's language (English by default, French included).
 
-*One OBS filter with a full pro voice chain (denoise, EQ, compressor, de-esser, leveler, limiter),
-set up in 20 seconds by a calibration wizard. Windows, OBS 32+.*
+## Features
+- **AI noise removal**: DeepFilterNet 3 (Max quality, 41.5 ms) or RNNoise (Fast, 21.5 ms). Fixed, displayed latency.
+- **Full chain**: high-pass, corrective EQ, compressor, de-esser, tone EQ, leveler (LUFS target), −1 dBFS look-ahead limiter.
+- **4 macros** (Cleanup, Warmth, Clarity, Punch) + **destination** (Stream −14, Podcast −16, Voice-over −18 LUFS).
+- **Calibration wizard**: 5 s of silence + 15 s of reading → gain, automatic mic correction,
+  4 indicators (noise, level, sibilance, clipping).
+- **Presets**: one per mic, switchable live from Streamer.bot / Stream Deck (obs-websocket).
+- **Before/After** at matched loudness with no sync jump, **auto-sync** of cameras and other mics,
+  **duplicate filter detection** (OBS filters and common VSTs).
 
-## Fonctionnalités
-- **Débruitage IA** : DeepFilterNet 3 (Qualité max, 41,5 ms) ou RNNoise (Rapide, 21,5 ms). Latence fixe, affichée.
-- **Chaîne complète** : passe-haut, EQ soustractif, compresseur, de-esser, EQ additif, leveler (cible LUFS), limiteur −1 dBFS.
-- **4 macros** (Nettoyage, Chaleur, Clarté, Punch) + **destination** (Stream −14, Podcast −16, Voix-off −18 LUFS).
-- **Calibration** : 5 s de silence + 15 s de lecture → gain, correction du micro, 4 voyants (bruit, niveau, sifflantes, saturation).
-- **Presets** : un par micro, changeables en direct depuis Streamer.bot / Stream Deck (obs-websocket).
-- **Avant/Après** à volume égalisé et sans saut de synchro, **synchronisation automatique** de la caméra,
-  **détection des filtres en double** (filtres OBS et VST courants).
+## Install
+1. Download `gragarda-voice-<version>-setup.exe` from [Releases](../../releases).
+2. Close OBS and run the installer (it finds your OBS folder automatically).
+3. In OBS: right-click your mic → Filters → + → **Gragarda Voice** → **Run calibration**.
+4. Set your camera's **Render Delay** to the displayed latency, or click **Auto-sync**.
 
-## Installation
-1. Télécharger `gragarda-voice-<version>-setup.exe` dans [Releases](../../releases).
-2. Fermer OBS, lancer l'installeur (il trouve le dossier d'OBS tout seul).
-3. Dans OBS : clic droit sur le micro → Filtres → + → **Gragarda Voice** → **Lancer la calibration**.
-4. Mettre le **Retard de rendu** de la caméra à la latence affichée (ou bouton **Synchroniser automatiquement**).
+Requires OBS Studio 32 or newer, Windows 10/11 64-bit.
+The installer is not code-signed: if SmartScreen warns you, click *More info* → *Run anyway*.
 
-Nécessite OBS Studio 32 ou plus récent, Windows 10/11 64 bits.
+## Presets from Streamer.bot / Stream Deck
+Save one preset per mic (*Save as preset*), then switch with an obs-websocket `SetSourceFilterSettings` request
+(Streamer.bot: *OBS Raw* action; Stream Deck: a button that triggers that Streamer.bot action):
+```json
+{"sourceName": "Mic/Aux", "filterName": "Gragarda Voice", "filterSettings": {"preset": "My mic"}}
+```
+A preset is reloaded only when its name changes: after tweaking, switch to another preset (or "(none)") and back.
 
-## Licence
-GPL-2.0-or-later (comme OBS). Composants tiers : RNNoise (BSD), DeepFilterNet (MIT/Apache-2.0) et ses
-dépendances Rust — voir `licenses/`.
+## Français
+Un seul filtre OBS avec toute la chaîne d'un studio voix pro (débruitage IA, EQ, compresseur, de-esser, leveler,
+limiteur), réglé en 20 secondes par un assistant de calibration. L'interface est en français si OBS est en français.
+Installation : télécharger l'installeur dans [Releases](../../releases), fermer OBS, lancer l'installeur, puis
+clic droit sur le micro → Filtres → + → **Gragarda Voice** → **Lancer la calibration**.
+
+## License
+GPL-2.0-or-later (same as OBS). Third-party components: RNNoise (BSD), DeepFilterNet (MIT/Apache-2.0) and its
+Rust dependencies — see `licenses/`.
 
 ---
 
-# Développement
+# Development (notes in French)
 
 Chaîne : trim, passe-haut, débruitage, EQ soustractif, compresseur, de-esser, EQ additif, leveler, limiteur à anticipation 1,5 ms.
 Latence fixe par mode : Qualité max 1992 échantillons (41,5 ms), Rapide 1032 (21,5 ms).
@@ -68,16 +81,6 @@ cmake --build build --config RelWithDebInfo
 ctest --test-dir build -C RelWithDebInfo
 cmake --install build --config RelWithDebInfo     (terminal admin, OBS ferme)
 ```
-
-## Presets et Streamer.bot / Stream Deck
-Un seul filtre, plusieurs presets (un par micro, par ex.). Pour changer de preset depuis Streamer.bot :
-action "OBS Raw" -> requete `SetSourceFilterSettings` :
-```json
-{"sourceName": "01-Mic/Aux", "filterName": "Gragarda Voice - sport", "filterSettings": {"preset": "Vocaster"}}
-```
-Stream Deck : bouton qui declenche cette action Streamer.bot (plugin Streamer.bot pour Stream Deck).
-Le preset n'est recharge que si son nom change ; pour revenir aux valeurs d'un preset apres l'avoir retouche,
-passer par un autre preset ou "(aucun)".
 
 ## Installeur
 Inno Setup 6 (`winget install JRSoftware.InnoSetup`), apres le build :
