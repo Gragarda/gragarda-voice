@@ -93,7 +93,11 @@ void gv_auto_sync(obs_source_t* filter, int latencyMs)
         const char* id = obs_source_get_unversioned_id(s);
         const bool camera = (flags & OBS_SOURCE_ASYNC_VIDEO) && std::strcmp(id, "ffmpeg_source") != 0 &&
                             std::strcmp(id, "vlc_source") != 0;
-        const bool mic = std::strcmp(id, "wasapi_input_capture") == 0;
+        // micros : Windows (WASAPI), macOS (CoreAudio), Linux (PulseAudio/PipeWire, ALSA, JACK)
+        bool mic = false;
+        for (const char* m : {"wasapi_input_capture", "coreaudio_input_capture", "pulse_input_capture",
+                              "alsa_input_capture", "jack_input_client"})
+            mic = mic || std::strcmp(id, m) == 0;
         if (!camera && !mic) return true;
         Plan pl{s, camera, (flags & OBS_SOURCE_AUDIO) != 0, ""};
         const int64_t cur = obs_source_get_sync_offset(s) / 1000000;
