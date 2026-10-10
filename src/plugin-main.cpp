@@ -1,0 +1,20 @@
+#include <obs-module.h>
+
+OBS_DECLARE_MODULE()
+OBS_MODULE_USE_DEFAULT_LOCALE("gragarda-voice", "fr-FR")
+
+extern struct obs_source_info gragarda_voice_filter_info;
+void gragarda_voice_register_info();
+
+bool obs_module_load(void)
+{
+    gragarda_voice_register_info();
+    obs_register_source(&gragarda_voice_filter_info);
+    blog(LOG_INFO, "[gragarda-voice] charge (v0.1.0)");
+    return true;
+}
+
+void obs_module_unload(void)
+{
+    blog(LOG_INFO, "[gragarda-voice] decharge");
+}
