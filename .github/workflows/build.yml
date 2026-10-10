@@ -21,7 +21,7 @@ jobs:
         run: |
           sudo add-apt-repository -y ppa:obsproject/obs-studio
           sudo apt-get update
-          sudo apt-get install -y obs-studio qt6-base-dev cmake ninja-build build-essential
+          sudo apt-get install -y obs-studio libsimde-dev qt6-base-dev cmake ninja-build build-essential
 
       - name: DeepFilterNet (libDF)
         run: |
@@ -46,12 +46,15 @@ jobs:
           path: gragarda-voice-linux-x86_64.tar.gz
 
   macos:
-    runs-on: macos-14
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
       - name: libobs ${{ env.OBS_VERSION }} (sources)
         run: |
+          # OBS 32.2 exige le SDK macOS 26.5 : on prend le Xcode le plus recent installe
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
+          xcrun --show-sdk-version
           git clone --depth 1 --branch $OBS_VERSION --recurse-submodules --shallow-submodules \
             https://github.com/obsproject/obs-studio.git ../obs-studio
           cd ../obs-studio
