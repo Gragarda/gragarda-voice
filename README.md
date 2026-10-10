@@ -66,7 +66,7 @@ The DSP core (`dsp/`) does not depend on OBS.
   ```
 
 ### Build
-OBS installed in `C:/Program Files/obs-studio` (default value of OBS_DIR).
+OBS_DIR defaults to `C:/Program Files/obs-studio` (pass `-DOBS_DIR=...` if OBS is elsewhere).
 ```
 set OBS=%CD%/../obs-studio
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64 ^
@@ -178,7 +178,7 @@ Le cœur DSP (`dsp/`) ne dépend pas d'OBS.
   ```
 
 ### Build
-OBS installé ici : `C:/Program Files/obs-studio` (valeur par défaut de OBS_DIR).
+OBS_DIR vaut `C:/Program Files/obs-studio` par défaut (passer `-DOBS_DIR=...` si OBS est ailleurs).
 ```
 set OBS=%CD%/../obs-studio
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64 ^
