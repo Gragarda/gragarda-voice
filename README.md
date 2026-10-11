@@ -2,6 +2,10 @@
 
 🇫🇷 [Version française](#version-française)
 
+[![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/gragarda)
+
+Gragarda Voice is free and open source. If it helps you, you can support its development on [Ko-fi](https://ko-fi.com/gragarda).
+
 One OBS filter that runs a full pro voice-studio chain, set up in 20 seconds by a calibration wizard.
 The interface follows OBS's language: 34 languages included (English by default for the others).
 
@@ -114,6 +118,10 @@ Rust dependencies — see `licenses/`.
 # Version française
 
 🇬🇧 [English version](#gragarda-voice--all-in-one-voice-filter-for-obs-windows)
+
+[![Me soutenir sur Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/gragarda)
+
+Gragarda Voice est gratuit et open source. S'il vous est utile, vous pouvez soutenir son développement sur [Ko-fi](https://ko-fi.com/gragarda).
 
 Un seul filtre OBS qui applique toute la chaîne d'un studio voix pro, réglé en 20 secondes par un assistant de calibration.
 L'interface suit la langue d'OBS : 34 langues incluses (anglais par défaut pour les autres).
