@@ -60,7 +60,7 @@ jobs:
           cd ../obs-studio
           cmake --preset macos -DENABLE_BROWSER=OFF -DENABLE_WEBSOCKET=OFF -DENABLE_SCRIPTING=OFF
           # pas de build preset macOS dans OBS 32.2 : build direct (generateur Xcode)
-          cmake --build build_macos --config RelWithDebInfo --target libobs
+          cmake --build build_macos --config Release --target libobs
 
       - name: DeepFilterNet (libDF universel)
         run: |
@@ -83,7 +83,7 @@ jobs:
           cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
             -Dlibobs_DIR="$OBS/build_macos/libobs" -DCMAKE_PREFIX_PATH="$OBS/build_macos;$DEPS;$QT" \
-            -DCMAKE_FRAMEWORK_PATH="$OBS/build_macos/libobs/RelWithDebInfo" \
+            -DCMAKE_FRAMEWORK_PATH="$OBS/build_macos/libobs/Release" \
             -DCMAKE_MODULE_PATH="$OBS/cmake/finders"
           cmake --build build
           ctest --test-dir build --output-on-failure
