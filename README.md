@@ -14,6 +14,13 @@ Russian, Ukrainian, Turkish, Japanese, Korean, Chinese (Simplified and Tradition
 Finnish, Czech, Slovak, Hungarian, Romanian, Greek, Bulgarian, Croatian, Catalan, Indonesian, Vietnamese, Thai,
 Arabic, Hebrew, Hindi. Fixes welcome: edit `data/locale/<lang>.ini` (check with `python tests/check_locales.py`).
 
+## Made with AI
+To be transparent: **most of this plugin's code was written by an AI** (Claude, by Anthropic), under my direction.
+I chose the processing chain, the settings and the features, and tested every version by ear in OBS
+on several microphones. The translations were also produced with AI. The noise-removal engines it uses
+(DeepFilterNet, RNNoise) are third-party open-source projects not written by AI.
+Bugs or doubts? Please open an [issue](../../issues).
+
 ## Features
 - **AI noise removal**: DeepFilterNet 3 (Max quality, 41.5 ms) or RNNoise (Fast, 21.5 ms). Fixed, displayed latency.
 - **Full chain**: high-pass, corrective EQ, compressor, de-esser, tone EQ, leveler (LUFS target), −1 dBFS look-ahead limiter.
@@ -130,6 +137,13 @@ Traductions : anglais, français, allemand, espagnol, italien, portugais (Brési
 russe, ukrainien, turc, japonais, coréen, chinois (simplifié et traditionnel), suédois, danois, norvégien,
 finnois, tchèque, slovaque, hongrois, roumain, grec, bulgare, croate, catalan, indonésien, vietnamien, thaï,
 arabe, hébreu, hindi. Corrections bienvenues : modifier `data/locale/<langue>.ini` (vérifier avec `python tests/check_locales.py`).
+
+## Fait avec l'IA
+Par transparence : **l'essentiel du code de ce plugin a été écrit par une IA** (Claude, d'Anthropic), sous ma direction.
+J'ai choisi la chaîne de traitement, les réglages et les fonctionnalités, et j'ai testé chaque version à l'écoute
+dans OBS sur plusieurs micros. Les traductions ont aussi été produites avec l'IA. Les moteurs de débruitage utilisés
+(DeepFilterNet, RNNoise) sont des projets open source tiers, non écrits par une IA.
+Un bug ou un doute ? Ouvrez une [issue](../../issues).
 
 ## Fonctionnalités
 - **Débruitage IA** : DeepFilterNet 3 (Qualité max, 41,5 ms) ou RNNoise (Rapide, 21,5 ms). Latence fixe et affichée.
