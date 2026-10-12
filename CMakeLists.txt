@@ -68,6 +68,12 @@ if(MSVC)
   target_compile_options(gragarda-voice PRIVATE /W4 /fp:fast)
   # Nom du .pdb seul dans la DLL publiee, pas le chemin du PC de build
   target_link_options(gragarda-voice PRIVATE /PDBALTPATH:%_PDB%)
+elseif(UNIX AND NOT APPLE)
+  # Un objet statique (libDF Rust / asm) sans .note.GNU-stack rend la pile executable :
+  # glibc >= 2.41 refuse alors le dlopen ("cannot enable executable stack")
+  # --exclude-libs : symboles des libs statiques (rnnoise_*, df_*) non exportes. Sinon le
+  # rnnoise_create d'obs-filters (autre version, deja charge) remplace le notre -> crash
+  target_link_options(gragarda-voice PRIVATE -Wl,-z,noexecstack -Wl,--exclude-libs,ALL)
 endif()
 
 # ---- Installation / paquet, par OS
