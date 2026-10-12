@@ -58,7 +58,7 @@ jobs:
           git clone --depth 1 --branch $OBS_VERSION --recurse-submodules --shallow-submodules \
             https://github.com/obsproject/obs-studio.git ../obs-studio
           cd ../obs-studio
-          cmake --preset macos -DENABLE_BROWSER=OFF -DENABLE_WEBSOCKET=OFF -DENABLE_SCRIPTING=OFF
+          cmake --preset macos -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DENABLE_BROWSER=OFF -DENABLE_WEBSOCKET=OFF -DENABLE_SCRIPTING=OFF
           # pas de build preset macOS dans OBS 32.2 : build direct (generateur Xcode)
           cmake --build build_macos --config Release --target libobs
 
