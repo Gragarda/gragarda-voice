@@ -350,6 +350,10 @@ static obs_properties_t* vf_properties(void* data)
             return false;
         }, vf);
 
+    obs_property_t* kofi = obs_properties_add_button(props, "support_kofi", obs_module_text("SupportKofi"), nullptr);
+    obs_property_button_set_type(kofi, OBS_BUTTON_URL);
+    obs_property_button_set_url(kofi, "https://ko-fi.com/gragarda");
+
     return props;
 }
 
