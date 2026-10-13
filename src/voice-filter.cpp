@@ -13,7 +13,6 @@ void gv_auto_sync(obs_source_t* filter, int latencyMs);
 bool gv_ask_text(const char* titleKey, const char* labelKey, const char* initial, std::string& out);
 
 #define S_GAIN    "gain_db"
-#define S_BYPASS  "bypass"
 #define S_DENOISE "denoise"
 #define S_ENGINE  "engine"
 #define S_CLEAN   "m_clean"
@@ -138,7 +137,6 @@ static void vf_update(void* data, obs_data_t* settings)
         vf->loadedPreset = preset;
     }
     vf->chain.setGainDb((float)obs_data_get_double(settings, S_GAIN));
-    vf->chain.setBypass(obs_data_get_bool(settings, S_BYPASS));
     vf->chain.setDenoise(obs_data_get_bool(settings, S_DENOISE));
     vf->chain.setEngine((VoiceChain::Engine)obs_data_get_int(settings, S_ENGINE));
     VoiceChain::Macros m;
@@ -193,7 +191,6 @@ static struct obs_audio_data* vf_filter_audio(void* data, struct obs_audio_data*
 static void vf_defaults(obs_data_t* settings)
 {
     obs_data_set_default_double(settings, S_GAIN, 0.0);
-    obs_data_set_default_bool(settings, S_BYPASS, false);
     obs_data_set_default_bool(settings, S_DENOISE, true);
     obs_data_set_default_int(settings, S_ENGINE, VoiceChain::Max);
     for (const char* k : {S_CLEAN, S_WARMTH, S_CLARITY, S_PUNCH})
@@ -305,17 +302,33 @@ static obs_properties_t* vf_properties(void* data)
             return false;
         }, vf);
 
-    obs_property_t* g = obs_properties_add_float_slider(
-        props, S_GAIN, obs_module_text("Gain"), -24.0, 24.0, 0.1);
-    obs_property_float_set_suffix(g, " dB");
-
-    obs_properties_add_button2(props, S_CALIB, obs_module_text("Calibrate"),
+    // ponytail: ligne d'info vide = seul espaceur possible dans le panneau standard OBS
+    obs_properties_add_text(props, "calib_space", "", OBS_TEXT_INFO);
+    obs_properties_add_button2(props, S_CALIB, ("      " + std::string(obs_module_text("Calibrate")) + "      ").c_str(), // espaces = bouton plus large
         [](obs_properties_t*, obs_property_t*, void* d) {
             auto* f = static_cast<VoiceFilter*>(d);
             if (f)
                 gv_open_calibration(f->context, f->capture, f->chain.sampleRate());
             return false;
         }, vf);
+
+    obs_property_t* g = obs_properties_add_float_slider(
+        props, S_GAIN, obs_module_text("Gain"), -24.0, 24.0, 0.1);
+    obs_property_float_set_suffix(g, " dB");
+
+    // Debruitage : Mode et Nettoyage visibles seulement si coche
+    obs_property_t* dn = obs_properties_add_bool(props, S_DENOISE, obs_module_text("Denoise"));
+    obs_property_set_modified_callback(dn, [](obs_properties_t* p, obs_property_t*, obs_data_t* st) {
+        const bool on = obs_data_get_bool(st, S_DENOISE);
+        obs_property_set_visible(obs_properties_get(p, S_ENGINE), on);
+        obs_property_set_visible(obs_properties_get(p, S_CLEAN), on);
+        return true;
+    });
+    obs_property_t* eng = obs_properties_add_list(props, S_ENGINE, obs_module_text("Engine"),
+                                                  OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
+    obs_property_list_add_int(eng, obs_module_text("EngineMax"), VoiceChain::Max);
+    obs_property_list_add_int(eng, obs_module_text("EngineFast"), VoiceChain::Fast);
+    obs_property_set_modified_callback2(eng, vf_engine_modified, vf);
 
     // 4 macros : 50 = reglage de reference
     const char* macros[][2] = {{S_CLEAN, "Clean"}, {S_WARMTH, "Warmth"}, {S_CLARITY, "Clarity"}, {S_PUNCH, "Punch"}};
@@ -329,16 +342,7 @@ static obs_properties_t* vf_properties(void* data)
     obs_property_list_add_int(dest, obs_module_text("DestPodcast"), VoiceChain::Podcast);
     obs_property_list_add_int(dest, obs_module_text("DestVoiceOver"), VoiceChain::VoiceOver);
 
-    obs_properties_add_bool(props, S_DENOISE, obs_module_text("Denoise"));
-    obs_property_t* eng = obs_properties_add_list(props, S_ENGINE, obs_module_text("Engine"),
-                                                  OBS_COMBO_TYPE_LIST, OBS_COMBO_FORMAT_INT);
-    obs_property_list_add_int(eng, obs_module_text("EngineMax"), VoiceChain::Max);
-    obs_property_list_add_int(eng, obs_module_text("EngineFast"), VoiceChain::Fast);
-    obs_property_set_modified_callback2(eng, vf_engine_modified, vf);
-
-    obs_properties_add_bool(props, S_BYPASS, obs_module_text("Bypass"));
-
-    // Latence a compenser sur la camera + synchro automatique (apres confirmation)
+    // Latence de toute la chaine (debruitage + anticipation du limiteur), fixe meme debruitage coupe
     const auto e = vf ? current_engine(vf) : VoiceChain::Max;
     obs_property_t* info = obs_properties_add_text(props, S_LATENCY, latency_text(vf, e).c_str(), OBS_TEXT_INFO);
     obs_property_text_set_info_type(info, OBS_TEXT_INFO_NORMAL);
