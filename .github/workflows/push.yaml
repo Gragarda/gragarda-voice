@@ -1,0 +1,37 @@
+name: Push
+run-name: ${{ github.ref_name }} push run
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+permissions:
+  contents: write
+jobs:
+  build-project:
+    name: Build Project
+    uses: ./.github/workflows/build-project.yaml
+    permissions:
+      contents: read
+
+  create-release:
+    name: Create Release
+    # comme le template : release en brouillon avec checksums, a publier a la main
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    needs: build-project
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: Create Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "### Checksums" > CHECKSUMS.txt
+          for f in *.zip *.tar.gz *.exe; do
+            echo "    $f: $(sha256sum "$f" | cut -d ' ' -f 1)" >> CHECKSUMS.txt
+          done
+          prerelease=; [[ "$GITHUB_REF_NAME" == *-* ]] && prerelease=--prerelease
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft $prerelease \
+            --title "Gragarda Voice $GITHUB_REF_NAME" --notes-file CHECKSUMS.txt *.zip *.tar.gz *.exe

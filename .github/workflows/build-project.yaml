@@ -1,0 +1,154 @@
+name: Build Project
+# Structure reprise d'obsproject/obs-plugintemplate (workflow reutilisable appele par push / pr-pull / dispatch).
+# Les etapes de build restent les notres : libobs compile depuis les sources d'OBS + libDF (Rust).
+on:
+  workflow_call:
+
+env:
+  OBS_VERSION: 32.2.2
+  DFN_COMMIT: d375b2d
+
+jobs:
+  ubuntu-build:
+    name: Build for Ubuntu
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Dependances (OBS PPA, Qt6)
+        run: |
+          sudo add-apt-repository -y ppa:obsproject/obs-studio
+          sudo apt-get update
+          sudo apt-get install -y obs-studio libsimde-dev qt6-base-dev cmake ninja-build build-essential
+
+      - name: DeepFilterNet (libDF)
+        run: |
+          git clone https://github.com/Rikorose/DeepFilterNet.git ../DeepFilterNet
+          cd ../DeepFilterNet && git checkout $DFN_COMMIT
+          cargo build --release -p deep_filter --no-default-features --features capi --lib
+
+      - name: Build + tests
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build build
+          ctest --test-dir build --output-on-failure
+
+      - name: Paquet
+        run: |
+          cmake --install build --prefix pkg
+          tar -C pkg -czf gragarda-voice-linux-x86_64.tar.gz gragarda-voice
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gragarda-voice-linux-x86_64
+          path: gragarda-voice-linux-x86_64.tar.gz
+
+  macos-build:
+    name: Build for macOS
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: libobs ${{ env.OBS_VERSION }} (sources)
+        run: |
+          # OBS 32.2 exige le SDK macOS 26.5 : on prend le Xcode le plus recent installe
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
+          xcrun --show-sdk-version
+          git clone --depth 1 --branch $OBS_VERSION --recurse-submodules --shallow-submodules \
+            https://github.com/obsproject/obs-studio.git ../obs-studio
+          cd ../obs-studio
+          cmake --preset macos -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DENABLE_BROWSER=OFF -DENABLE_WEBSOCKET=OFF -DENABLE_SCRIPTING=OFF
+          # pas de build preset macOS dans OBS 32.2 : build direct (generateur Xcode)
+          cmake --build build_macos --config Release --target libobs
+
+      - name: DeepFilterNet (libDF universel)
+        run: |
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+          git clone https://github.com/Rikorose/DeepFilterNet.git ../DeepFilterNet
+          cd ../DeepFilterNet && git checkout $DFN_COMMIT
+          for t in aarch64-apple-darwin x86_64-apple-darwin; do
+            MACOSX_DEPLOYMENT_TARGET=12.0 cargo build --release -p deep_filter --no-default-features \
+              --features capi --lib --target $t
+          done
+          mkdir -p target/release
+          lipo -create target/aarch64-apple-darwin/release/libdf.a target/x86_64-apple-darwin/release/libdf.a \
+            -output target/release/libdf.a
+
+      - name: Build + tests
+        run: |
+          OBS=$(cd ../obs-studio && pwd)
+          DEPS=$(ls -d $OBS/.deps/obs-deps-20*-universal | head -1)
+          QT=$(ls -d $OBS/.deps/obs-deps-qt6-*-universal | head -1)
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -Dlibobs_DIR="$OBS/build_macos/libobs" -DCMAKE_PREFIX_PATH="$OBS/build_macos;$DEPS;$QT" \
+            -DCMAKE_FRAMEWORK_PATH="$OBS/build_macos/libobs/Release" \
+            -DCMAKE_MODULE_PATH="$OBS/cmake/finders"
+          cmake --build build
+          ctest --test-dir build --output-on-failure
+
+      - name: Paquet
+        run: |
+          cmake --install build --prefix pkg
+          cd pkg && zip -qry ../gragarda-voice-macos-universal.zip gragarda-voice.plugin
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gragarda-voice-macos-universal
+          path: gragarda-voice-macos-universal.zip
+
+  windows-build:
+    name: Build for Windows
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: libobs ${{ env.OBS_VERSION }} (sources)
+        run: |
+          git clone --depth 1 --branch $env:OBS_VERSION --recurse-submodules --shallow-submodules `
+            https://github.com/obsproject/obs-studio.git ../obs-studio
+          cd ../obs-studio
+          # le preset vise VS 2026 par defaut : le runner a VS 2022
+          cmake --preset windows-x64 -G "Visual Studio 17 2022" -DENABLE_BROWSER=OFF -DENABLE_WEBSOCKET=OFF -DENABLE_SCRIPTING=OFF
+          cmake --build --preset windows-x64 --config RelWithDebInfo --target libobs
+
+      - name: DeepFilterNet (libDF)
+        run: |
+          git clone https://github.com/Rikorose/DeepFilterNet.git ../DeepFilterNet
+          cd ../DeepFilterNet
+          git checkout $env:DFN_COMMIT
+          cargo build --release -p deep_filter --no-default-features --features capi --lib
+
+      - name: Build + tests
+        run: |
+          $OBS = (Resolve-Path ../obs-studio).Path -replace '\\', '/'
+          $DEPS = (Get-Item "$OBS/.deps/obs-deps-20*-x64").FullName -replace '\\', '/'
+          $QT = (Get-Item "$OBS/.deps/obs-deps-qt6-*-x64").FullName -replace '\\', '/'
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DOBS_DIR="${{ github.workspace }}/pkg" `
+            -DCMAKE_PREFIX_PATH="$OBS/build_x64;$OBS/build_x64/deps/w32-pthreads;$DEPS;$QT" `
+            -DCMAKE_MODULE_PATH="$OBS/cmake/finders"
+          cmake --build build --config RelWithDebInfo
+          ctest --test-dir build -C RelWithDebInfo --output-on-failure
+
+      - name: Paquet (zip + installeur)
+        run: |
+          cmake --install build --config RelWithDebInfo
+          Compress-Archive -Path pkg/* -DestinationPath gragarda-voice-windows-x64.zip
+          iscc installer/gragarda-voice.iss
+          Move-Item build/installer/*-setup.exe .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gragarda-voice-windows-x64
+          path: |
+            gragarda-voice-windows-x64.zip
+            *-setup.exe

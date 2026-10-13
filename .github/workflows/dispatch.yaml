@@ -1,0 +1,10 @@
+name: Dispatch
+run-name: Dispatched run on ${{ github.ref_name }}
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-project:
+    name: Build Project
+    uses: ./.github/workflows/build-project.yaml
