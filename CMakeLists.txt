@@ -5,50 +5,14 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON) # libs statiques liees dans un module partage (Linux)
 
-# libobs : pointe CMAKE_PREFIX_PATH vers ton build d'obs-studio (voir README)
-# ---- Coeur DSP : aucune dependance a OBS (reutilisable pour un VST3 plus tard)
-# RNNoise (BSD, copie de obs-studio/plugins/obs-filters/rnnoise, modele integre)
-file(GLOB RNNOISE_SRC third_party/rnnoise/src/*.c)
-add_library(rnnoise STATIC ${RNNOISE_SRC})
-target_include_directories(rnnoise PUBLIC third_party/rnnoise/include)
-target_compile_definitions(rnnoise PRIVATE _USE_MATH_DEFINES COMPILE_OPUS)
-
-# DeepFilterNet 3 (libDF, Rust, MIT/Apache) : clone de github.com/Rikorose/DeepFilterNet a cote du projet,
-# puis : cargo build --release -p deep_filter --no-default-features --features capi --lib
-set(DFN_DIR "${CMAKE_SOURCE_DIR}/../DeepFilterNet" CACHE PATH "Sources DeepFilterNet (libDF compilee)")
-set(DFN_MODEL "${DFN_DIR}/models/DeepFilterNet3_onnx.tar.gz")
-if(WIN32)
-  set(DFN_LIB_DEFAULT "${DFN_DIR}/target/release/df.lib")
-  set(DFN_SYS_LIBS ws2_32 userenv ntdll bcrypt advapi32)
-elseif(APPLE)
-  set(DFN_LIB_DEFAULT "${DFN_DIR}/target/release/libdf.a") # universel : lipo des deux cibles (voir CI)
-  set(DFN_SYS_LIBS "-framework CoreFoundation" "-framework Security" "-framework SystemConfiguration" iconv)
-else()
-  set(DFN_LIB_DEFAULT "${DFN_DIR}/target/release/libdf.a")
-  set(DFN_SYS_LIBS dl pthread m)
-endif()
-set(DFN_LIB "${DFN_LIB_DEFAULT}" CACHE FILEPATH "Bibliotheque statique libDF")
-
-add_library(gv_dsp STATIC dsp/VoiceChain.cpp dsp/Calibration.cpp)
-target_include_directories(gv_dsp PUBLIC dsp)
-target_link_libraries(gv_dsp PRIVATE rnnoise PUBLIC "${DFN_LIB}" ${DFN_SYS_LIBS})
-
-# ---- Auto-test DSP (sans OBS) : cmake -DGV_DSP_ONLY=ON ... puis ctest
-enable_testing()
-add_executable(test_chain tests/test_chain.cpp)
-target_link_libraries(test_chain PRIVATE gv_dsp)
-add_test(NAME test_chain COMMAND test_chain "${DFN_MODEL}")
-add_executable(test_calibration tests/test_calibration.cpp)
-target_link_libraries(test_calibration PRIVATE gv_dsp)
-add_test(NAME test_calibration COMMAND test_calibration)
-
-if(MSVC)
-  target_compile_options(gv_dsp PRIVATE /W4 /fp:fast)
-else()
-  target_compile_options(gv_dsp PRIVATE -Wall -Wextra)
-endif()
-
+# ---- Coeur DSP (submodule github.com/Gragarda/gragarda-voice-core) : gv_dsp, ${DFN_MODEL}
+# git submodule update --init ; tests du coeur : cmake -DGV_DSP_ONLY=ON (active GV_CORE_TESTS)
 option(GV_DSP_ONLY "Ne compiler que le coeur DSP et ses tests (pas besoin de libobs)" OFF)
+set(GV_CORE_TESTS ${GV_DSP_ONLY})
+enable_testing()
+add_subdirectory(core)
+
+# libobs : pointe CMAKE_PREFIX_PATH vers ton build d'obs-studio (voir README)
 if(GV_DSP_ONLY)
   return()
 endif()

@@ -52,10 +52,11 @@ A preset is reloaded only when its name changes: after tweaking, switch to anoth
 
 Chain: trim, high-pass, noise removal, subtractive EQ, compressor, de-esser, additive EQ, leveler, 1.5 ms look-ahead limiter.
 Fixed latency per mode: Max quality 1992 samples (41.5 ms), Fast 1032 (21.5 ms).
-RNNoise is copied into `third_party/rnnoise` from obs-studio. DeepFilterNet (libDF) is statically linked;
+The DSP core lives in the [gragarda-voice-core](https://github.com/Gragarda/gragarda-voice-core) submodule (`core/`): clone with `git clone --recursive`, or run `git submodule update --init`.
+RNNoise is copied into `core/third_party/rnnoise` from obs-studio. DeepFilterNet (libDF) is statically linked;
 its model is installed in `data/obs-plugins/gragarda-voice/models`.
 Qt 6 comes from the obs-deps (`.deps/obs-deps-qt6-*`), add it to CMAKE_PREFIX_PATH.
-The DSP core (`dsp/`) does not depend on OBS.
+The DSP core does not depend on OBS; it is also used by [gragarda-voice-vst](https://github.com/Gragarda/gragarda-voice-vst).
 
 ### Prerequisites
 - Visual Studio 2022 ("Desktop development with C++" workload); its CMake is enough (run from an "x64 Native Tools Command Prompt")
@@ -112,7 +113,7 @@ The latency line should show 42 ms in Max quality, 22 ms in Fast. Remove the OBS
 The OBS log (Help → Log Files) should contain "[gragarda-voice] charge".
 
 ### Structure
-- dsp/  : DSP core without OBS (reusable as a VST3)
+- core/ : DSP core without OBS (git submodule)
 - src/  : OBS glue (filter registration, properties)
 - data/ : translations
 
@@ -176,10 +177,11 @@ Un preset n'est rechargé que si son nom change : après des retouches, passer s
 
 Chaîne : trim, passe-haut, débruitage, EQ soustractif, compresseur, de-esser, EQ additif, leveler, limiteur à anticipation 1,5 ms.
 Latence fixe par mode : Qualité max 1992 échantillons (41,5 ms), Rapide 1032 (21,5 ms).
-RNNoise est copié dans `third_party/rnnoise` depuis obs-studio. DeepFilterNet (libDF) est lié statiquement ;
+Le cœur DSP est dans le submodule [gragarda-voice-core](https://github.com/Gragarda/gragarda-voice-core) (`core/`) : cloner avec `git clone --recursive`, ou lancer `git submodule update --init`.
+RNNoise est copié dans `core/third_party/rnnoise` depuis obs-studio. DeepFilterNet (libDF) est lié statiquement ;
 son modèle est installé dans `data/obs-plugins/gragarda-voice/models`.
 Qt 6 vient des obs-deps (`.deps/obs-deps-qt6-*`), à ajouter à CMAKE_PREFIX_PATH.
-Le cœur DSP (`dsp/`) ne dépend pas d'OBS.
+Le cœur DSP ne dépend pas d'OBS ; il sert aussi à [gragarda-voice-vst](https://github.com/Gragarda/gragarda-voice-vst).
 
 ### Prérequis
 - Visual Studio 2022 (charge « Développement desktop C++ ») ; son CMake suffit (lancer depuis un « x64 Native Tools Command Prompt »)
@@ -236,7 +238,7 @@ La ligne de latence doit afficher 42 ms en Qualité max, 22 ms en Rapide. Retire
 Le log OBS (Aide → Fichiers journaux) doit contenir « [gragarda-voice] charge ».
 
 ### Structure
-- dsp/  : cœur DSP sans OBS (réutilisable en VST3)
+- core/ : cœur DSP sans OBS (submodule git)
 - src/  : colle OBS (enregistrement du filtre, propriétés)
 - data/ : traductions
 
