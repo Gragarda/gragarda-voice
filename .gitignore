@@ -4,3 +4,8 @@ build-*/
 .vs/
 .impeccable/
 CLAUDE.md
+.deps/
+build_*/
+release/
+cmake/.CMakeBuildNumber
+!/build-aux/
