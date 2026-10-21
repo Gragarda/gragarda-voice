@@ -17,7 +17,12 @@ set(GV_CORE_TESTS ${GV_DSP_ONLY})
 enable_testing()
 add_subdirectory(core)
 # ponytail: code tiers (rnnoise) / depot separe, hors du -Werror des presets CI du template
-set_target_properties(rnnoise gv_dsp PROPERTIES COMPILE_WARNING_AS_ERROR OFF)
+set(GV_CORE_TARGETS rnnoise gv_dsp gv_dereverb)
+if(TARGET gv_offline)
+  list(APPEND GV_CORE_TARGETS gv_offline)
+endif()
+set_target_properties(${GV_CORE_TARGETS} PROPERTIES COMPILE_WARNING_AS_ERROR OFF
+  XCODE_ATTRIBUTE_GCC_TREAT_WARNINGS_AS_ERRORS NO) # Xcode : -Werror vient de cet attribut, pas de la propriete
 if(GV_DSP_ONLY)
   return()
 endif()
