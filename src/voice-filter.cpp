@@ -148,6 +148,7 @@ static void vf_update(void* data, obs_data_t* settings)
     m.corrLow = (float)obs_data_get_double(settings, "corr_low"); // poses par la calibration, pas d'UI
     m.corrPresence = (float)obs_data_get_double(settings, "corr_presence");
     m.corrAir = (float)obs_data_get_double(settings, "corr_air");
+    m.rt60 = (float)obs_data_get_double(settings, "dereverb_rt60");
     vf->chain.setMacros(m);
 }
 

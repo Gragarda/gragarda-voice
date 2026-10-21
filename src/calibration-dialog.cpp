@@ -131,9 +131,9 @@ private:
         const auto& r = rep_;
         blog(LOG_INFO,
              "[gragarda-voice] calibration : bruit %.1f LUFS, parole %.1f LUFS, SNR %.1f, crete %.1f dBFS, sature %.3f%%, "
-             "grave %+.1f, presence %+.1f, sifflantes %+.1f (pics %.1f), dynamique %.1f -> gain %+.1f, N%d C%d Cl%d P%d, correction %+.1f/%+.1f/%+.1f dB",
+             "grave %+.1f, presence %+.1f, sifflantes %+.1f (pics %.1f), dynamique %.1f -> gain %+.1f, N%d C%d Cl%d P%d, correction %+.1f/%+.1f/%+.1f dB, RT60 %.2f s -> de-reverb %.2f",
              r.noiseLufs, r.speechLufs, r.snrDb, r.peakDb, r.clipPct, r.lowDb, r.presenceDb, r.sibilanceDb, r.sibPeakDb,
-             r.spreadDb, r.gainDb, r.clean, r.warmth, r.clarity, r.punch, r.corrLow, r.corrPresence, r.corrAir);
+             r.spreadDb, r.gainDb, r.clean, r.warmth, r.clarity, r.punch, r.corrLow, r.corrPresence, r.corrAir, r.rt60, r.dereverbRt60);
 
         if (!r.valid) {
             setText(T("CalibInvalid"));
@@ -149,6 +149,9 @@ private:
         html += light(r.level, "LightLevel", "LevelG", "LevelO", "LevelR");
         html += light(r.sibilance, "LightSib", "SibG", "SibO", "SibR");
         html += light(r.clipping, "LightClip", "ClipG", "ClipO", "ClipR");
+        html += "<tr><td>" + dot(r.reverb) + "</td><td><b>" + T("LightReverb") + "</b></td><td>" +
+                (r.rt60 <= 0 ? T("ReverbNA") : T(r.dereverbRt60 > 0 ? "ReverbOn" : "ReverbOff").arg(r.rt60, 0, 'f', 2)) +
+                "</td></tr>";
         html += "</table><p>" + T("CalibProposal") + "</p><table cellspacing='4'>";
         html += QString("<tr><td>%1</td><td><b>%2 dB</b></td></tr>").arg(T("Gain")).arg(r.gainDb, 0, 'f', 1);
         html += QString("<tr><td>%1</td><td><b>%2</b></td></tr>").arg(T("Clean")).arg(r.clean);
@@ -182,6 +185,7 @@ private:
             obs_data_set_double(s, "corr_low", rep_.corrLow);
             obs_data_set_double(s, "corr_presence", rep_.corrPresence);
             obs_data_set_double(s, "corr_air", rep_.corrAir);
+            obs_data_set_double(s, "dereverb_rt60", rep_.dereverbRt60);
             obs_source_update(src, s);
             obs_source_update_properties(src); // rafraichit le panneau s'il est ouvert
             obs_data_release(s);

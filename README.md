@@ -22,7 +22,7 @@ on several microphones. The translations were also produced with AI. The noise-r
 Bugs or doubts? Please open an [issue](../../issues).
 
 ## Features
-- **AI noise removal**: DeepFilterNet 3 (Max quality, 41.5 ms) or RNNoise (Fast, 21.5 ms). Fixed, displayed latency.
+- **AI noise removal**: DeepFilterNet 3 (Max quality, 51.5 ms) or RNNoise (Fast, 31.5 ms). Fixed, displayed latency.
 - **Full chain**: high-pass, corrective EQ, compressor, de-esser, tone EQ, leveler (LUFS target), −1 dBFS look-ahead limiter.
 - **4 macros** (Cleanup, Warmth, Clarity, Punch) + **destination** (Stream −14, Podcast −16, Voice-over −18 LUFS).
 - **Calibration wizard**: 5 s of silence + 15 s of reading → gain, automatic mic correction,
@@ -51,7 +51,7 @@ A preset is reloaded only when its name changes: after tweaking, switch to anoth
 ## Development
 
 Chain: trim, high-pass, noise removal, subtractive EQ, compressor, de-esser, additive EQ, leveler, 1.5 ms look-ahead limiter.
-Fixed latency per mode: Max quality 1992 samples (41.5 ms), Fast 1032 (21.5 ms).
+Fixed latency per mode: Max quality 2472 samples (51.5 ms), Fast 1512 (31.5 ms).
 The DSP core lives in the [gragarda-voice-core](https://github.com/Gragarda/gragarda-voice-core) submodule (`core/`): clone with `git clone --recursive`, or run `git submodule update --init`.
 RNNoise is copied into `core/third_party/rnnoise` from obs-studio. DeepFilterNet (libDF) is statically linked;
 its model is installed in `data/obs-plugins/gragarda-voice/models`.
@@ -136,7 +136,7 @@ dans OBS sur plusieurs micros. Les traductions ont aussi été produites avec l'
 Un bug ou un doute ? Ouvrez une [issue](../../issues).
 
 ## Fonctionnalités
-- **Débruitage IA** : DeepFilterNet 3 (Qualité max, 41,5 ms) ou RNNoise (Rapide, 21,5 ms). Latence fixe et affichée.
+- **Débruitage IA** : DeepFilterNet 3 (Qualité max, 51,5 ms) ou RNNoise (Rapide, 31,5 ms). Latence fixe et affichée.
 - **Chaîne complète** : passe-haut, EQ correctif, compresseur, de-esser, EQ de couleur, leveler (cible LUFS), limiteur à anticipation −1 dBFS.
 - **4 macros** (Nettoyage, Chaleur, Clarté, Punch) + **destination** (Stream −14, Podcast −16, Voix-off −18 LUFS).
 - **Assistant de calibration** : 5 s de silence + 15 s de lecture → gain, correction automatique du micro,
@@ -165,7 +165,7 @@ Un preset n'est rechargé que si son nom change : après des retouches, passer s
 ## Développement
 
 Chaîne : trim, passe-haut, débruitage, EQ soustractif, compresseur, de-esser, EQ additif, leveler, limiteur à anticipation 1,5 ms.
-Latence fixe par mode : Qualité max 1992 échantillons (41,5 ms), Rapide 1032 (21,5 ms).
+Latence fixe par mode : Qualité max 2472 échantillons (51,5 ms), Rapide 1512 (31,5 ms).
 Le cœur DSP est dans le submodule [gragarda-voice-core](https://github.com/Gragarda/gragarda-voice-core) (`core/`) : cloner avec `git clone --recursive`, ou lancer `git submodule update --init`.
 RNNoise est copié dans `core/third_party/rnnoise` depuis obs-studio. DeepFilterNet (libDF) est lié statiquement ;
 son modèle est installé dans `data/obs-plugins/gragarda-voice/models`.
