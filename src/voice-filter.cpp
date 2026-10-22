@@ -11,6 +11,7 @@ void gv_open_calibration(obs_source_t *src, std::shared_ptr<Capture> cap, double
 std::vector<std::string> gv_duplicates(obs_source_t *filter, bool disable);
 void gv_auto_sync(obs_source_t *filter, int latencyMs);
 bool gv_ask_text(const char *titleKey, const char *labelKey, const char *initial, std::string &out);
+void gv_open_advanced(obs_source_t *src);
 
 #define S_GAIN    "gain_db"
 #define S_DENOISE "denoise"
@@ -31,8 +32,10 @@ bool gv_ask_text(const char *titleKey, const char *labelKey, const char *initial
 #define S_PRESET_DEL  "preset_delete"
 
 // Ce qu'un preset retient (tout le son, sauf Avant/Apres)
-static const char *kPresetKeys[] = {"gain_db", "denoise",     "engine",   "m_clean",       "m_warmth", "m_clarity",
-				    "m_punch", "destination", "corr_low", "corr_presence", "corr_air"};
+static const char *kPresetKeys[] = {"gain_db",       "denoise",       "engine",      "m_clean",     "m_warmth",
+				    "m_clarity",     "m_punch",       "destination", "corr_low",    "corr_presence",
+				    "corr_air",      "dereverb_rt60", "st_hpf",      "st_dereverb", "st_eq",
+				    "st_compressor", "st_deesser",    "st_leveler",  "st_limiter"};
 
 struct VoiceFilter {
 	obs_source_t *context = nullptr;
@@ -163,6 +166,15 @@ static void vf_update(void *data, obs_data_t *settings)
 	m.corrAir = (float)obs_data_get_double(settings, "corr_air");
 	m.rt60 = (float)obs_data_get_double(settings, "dereverb_rt60");
 	vf->chain.setMacros(m);
+	VoiceChain::Stages st;
+	st.hpf = obs_data_get_bool(settings, "st_hpf");
+	st.dereverb = obs_data_get_bool(settings, "st_dereverb");
+	st.eq = obs_data_get_bool(settings, "st_eq");
+	st.compressor = obs_data_get_bool(settings, "st_compressor");
+	st.deesser = obs_data_get_bool(settings, "st_deesser");
+	st.leveler = obs_data_get_bool(settings, "st_leveler");
+	st.limiter = obs_data_get_bool(settings, "st_limiter");
+	vf->chain.setStages(st);
 }
 
 static void *vf_create(obs_data_t *settings, obs_source_t *source)
@@ -210,6 +222,9 @@ static void vf_defaults(obs_data_t *settings)
 	for (const char *k : {S_CLEAN, S_WARMTH, S_CLARITY, S_PUNCH})
 		obs_data_set_default_int(settings, k, 50);
 	obs_data_set_default_int(settings, S_DEST, VoiceChain::Stream);
+	for (const char *k :
+	     {"st_hpf", "st_dereverb", "st_eq", "st_compressor", "st_deesser", "st_leveler", "st_limiter"})
+		obs_data_set_default_bool(settings, k, true);
 }
 
 static int latency_ms(const VoiceFilter *vf, VoiceChain::Engine e)
@@ -381,6 +396,16 @@ static obs_properties_t *vf_properties(void *data)
 			auto *f = static_cast<VoiceFilter *>(d);
 			if (f)
 				gv_auto_sync(f->context, latency_ms(f, current_engine(f)));
+			return false;
+		},
+		vf);
+
+	obs_properties_add_button2(
+		props, "advanced", obs_module_text("Advanced"),
+		[](obs_properties_t *, obs_property_t *, void *d) {
+			auto *f = static_cast<VoiceFilter *>(d);
+			if (f)
+				gv_open_advanced(f->context);
 			return false;
 		},
 		vf);
