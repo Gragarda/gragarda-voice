@@ -237,6 +237,7 @@ void gv_open_advanced(obs_source_t *src)
 			obs_data_t *v = obs_source_get_settings(f);
 			apply(v, key);
 			obs_source_update(f, v);
+			obs_source_update_properties(f); // la latence affichee suit le de-reverb
 			obs_data_release(v);
 			obs_source_release(f);
 		}
