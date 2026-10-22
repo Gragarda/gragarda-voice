@@ -1,6 +1,11 @@
 build/
-build-*/
+/build-*/
 *.user
 .vs/
 .impeccable/
 CLAUDE.md
+.deps/
+build_*/
+release/
+cmake/.CMakeBuildNumber
+!/build-aux/

@@ -1,154 +1,307 @@
 name: Build Project
-# Structure reprise d'obsproject/obs-plugintemplate (workflow reutilisable appele par push / pr-pull / dispatch).
-# Les etapes de build restent les notres : libobs compile depuis les sources d'OBS + libDF (Rust).
 on:
   workflow_call:
-
+    outputs:
+      pluginName:
+        description: Project name detected by parsing build spec file
+        value: ${{ jobs.check-event.outputs.pluginName }}
 env:
-  OBS_VERSION: 32.2.2
-  DFN_COMMIT: d375b2d
+  DFN_COMMIT: d375b2d # DeepFilterNet (libDF, Rust), compile avant le plugin
 
 jobs:
-  ubuntu-build:
-    name: Build for Ubuntu
+  check-event:
+    name: Check GitHub Event Data 🔎
     runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    outputs:
+      package: ${{ steps.setup.outputs.package }}
+      config: ${{ steps.setup.outputs.config }}
+      commitHash: ${{ steps.setup.outputs.commitHash }}
+      pluginName: ${{ steps.setup.outputs.pluginName }}
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
-
-      - name: Dependances (OBS PPA, Qt6)
+          fetch-depth: 0
+      - name: Check Event Data ☑️
+        id: setup
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          sudo add-apt-repository -y ppa:obsproject/obs-studio
-          sudo apt-get update
-          sudo apt-get install -y obs-studio libsimde-dev qt6-base-dev cmake ninja-build build-essential
+          : Check Event Data ☑️
+          if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
 
-      - name: DeepFilterNet (libDF)
-        run: |
-          git clone https://github.com/Rikorose/DeepFilterNet.git ../DeepFilterNet
-          cd ../DeepFilterNet && git checkout $DFN_COMMIT
-          cargo build --release -p deep_filter --no-default-features --features capi --lib
+          case "${GITHUB_EVENT_NAME}" in
+            pull_request)
+              config_data=('package:false' 'config:RelWithDebInfo')
+              if gh pr view ${{ github.event.number }} --json labels \
+                | jq -e -r '.labels[] | select(.name == "Seeking Testers")' > /dev/null; then
+                config_data[0]='package:true'
+              fi
+              ;;
+            push)
+              config_data=('package:true' 'config:RelWithDebInfo')
+              if [[ ${GITHUB_REF_NAME} =~ v[0-9]+.[0-9]+.[0-9]+(-(rc|beta|alpha).+)? ]]; then
+                config_data[1]='config:Release'
+              fi
+              ;;
+            workflow_dispatch)
+              config_data=('package:false' 'config:RelWithDebInfo')
+              ;;
+            schedule)
+              config_data=('package:true' 'config:RelWithDebInfo')
+              ;;
+            *) ;;
+          esac
 
-      - name: Build + tests
-        run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build build
-          ctest --test-dir build --output-on-failure
+          for config in "${config_data[@]}"; do
+            IFS=':' read -r key value <<< "${config}"
+            echo "${key}=${value}" >> $GITHUB_OUTPUT
+          done
+          echo "commitHash=${GITHUB_SHA:0:9}" >> $GITHUB_OUTPUT
 
-      - name: Paquet
-        run: |
-          cmake --install build --prefix pkg
-          tar -C pkg -czf gragarda-voice-linux-x86_64.tar.gz gragarda-voice
+          plugin_name="$(grep 'name' buildspec.json | sed -E -e 's/^.+"name":[^"]+"(.+)",?$/\1/g')"
+          plugin_display_name="$(grep 'displayName' buildspec.json | sed -E -e 's/^.+"displayName":[^"]+"(.+)",?$/\1/g' || echo "")"
 
-      - uses: actions/upload-artifact@v4
-        with:
-          name: gragarda-voice-linux-x86_64
-          path: gragarda-voice-linux-x86_64.tar.gz
+          if [[ "${plugin_display_name}" ]]; then
+            echo "pluginName=${plugin_display_name}" >> $GITHUB_OUTPUT
+          else
+            echo "pluginName=${plugin_name}" >> $GITHUB_OUTPUT
+          fi
 
   macos-build:
-    name: Build for macOS
+    name: Build for macOS 🍏
     runs-on: macos-26
+    needs: check-event
+    defaults:
+      run:
+        shell: zsh --no-rcs --errexit --pipefail {0}
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
+          fetch-depth: 0
 
-      - name: libobs ${{ env.OBS_VERSION }} (sources)
+      - name: Set Up Environment 🔧
+        id: setup
         run: |
-          # OBS 32.2 exige le SDK macOS 26.5 : on prend le Xcode le plus recent installe
-          sudo xcode-select -s "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)"
+          : Set Up Environment 🔧
+          if (( ${+RUNNER_DEBUG} )) setopt XTRACE
+
+          print '::group::Enable Xcode 26'
+          # OBS 32.2 exige le SDK macOS 26.5 : Xcode 26 le plus recent installe
+          sudo xcode-select --switch "$(ls -d /Applications/Xcode_26*.app | sort -V | tail -1)/Contents/Developer"
           xcrun --show-sdk-version
-          git clone --depth 1 --branch $OBS_VERSION --recurse-submodules --shallow-submodules \
-            https://github.com/obsproject/obs-studio.git ../obs-studio
-          cd ../obs-studio
-          cmake --preset macos -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DENABLE_BROWSER=OFF -DENABLE_WEBSOCKET=OFF -DENABLE_SCRIPTING=OFF
-          # pas de build preset macOS dans OBS 32.2 : build direct (generateur Xcode)
-          cmake --build build_macos --config Release --target libobs
+          print '::endgroup::'
 
-      - name: DeepFilterNet (libDF universel)
+          print '::group::Clean Homebrew Environment'
+          local -a unwanted_formulas=()
+          local -a remove_formulas=()
+          for formula (${unwanted_formulas}) {
+            if [[ -d ${HOMEBREW_PREFIX}/Cellar/${formula} ]] remove_formulas+=(${formula})
+          }
+
+          if (( #remove_formulas )) brew uninstall --ignore-dependencies ${remove_formulas}
+          print '::endgroup::'
+
+          local product_name
+          local product_version
+          read -r product_name product_version <<< \
+            "$(jq -r '. | {name, version} | join(" ")' buildspec.json)"
+
+          print "pluginName=${product_name}" >> $GITHUB_OUTPUT
+          print "pluginVersion=${product_version}" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache/restore@v4
+        id: ccache-cache
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ${{ runner.os }}-ccache-${{ needs.check-event.outputs.config }}
+          restore-keys: |
+            ${{ runner.os }}-ccache-
+
+      - name: DeepFilterNet (libDF universel) 🦀
         run: |
+          : DeepFilterNet
           rustup target add aarch64-apple-darwin x86_64-apple-darwin
           git clone https://github.com/Rikorose/DeepFilterNet.git ../DeepFilterNet
-          cd ../DeepFilterNet && git checkout $DFN_COMMIT
-          for t in aarch64-apple-darwin x86_64-apple-darwin; do
-            MACOSX_DEPLOYMENT_TARGET=12.0 cargo build --release -p deep_filter --no-default-features \
-              --features capi --lib --target $t
-          done
+          cd ../DeepFilterNet && git checkout ${DFN_COMMIT}
+          for t (aarch64-apple-darwin x86_64-apple-darwin) {
+            MACOSX_DEPLOYMENT_TARGET=12.0 cargo build --release -p deep_filter --no-default-features               --features capi --lib --target ${t}
+          }
           mkdir -p target/release
-          lipo -create target/aarch64-apple-darwin/release/libdf.a target/x86_64-apple-darwin/release/libdf.a \
-            -output target/release/libdf.a
+          lipo -create target/{aarch64,x86_64}-apple-darwin/release/libdf.a -output target/release/libdf.a
 
-      - name: Build + tests
-        run: |
-          OBS=$(cd ../obs-studio && pwd)
-          DEPS=$(ls -d $OBS/.deps/obs-deps-20*-universal | head -1)
-          QT=$(ls -d $OBS/.deps/obs-deps-qt6-*-universal | head -1)
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
-            -Dlibobs_DIR="$OBS/build_macos/libobs" -DCMAKE_PREFIX_PATH="$OBS/build_macos;$DEPS;$QT" \
-            -DCMAKE_FRAMEWORK_PATH="$OBS/build_macos/libobs/Release" \
-            -DCMAKE_MODULE_PATH="$OBS/cmake/finders"
-          cmake --build build
-          ctest --test-dir build --output-on-failure
-
-      - name: Paquet
-        run: |
-          cmake --install build --prefix pkg
-          cd pkg && zip -qry ../gragarda-voice-macos-universal.zip gragarda-voice.plugin
-
-      - uses: actions/upload-artifact@v4
+      - name: Build Plugin 🧱
+        uses: ./.github/actions/build-plugin
         with:
-          name: gragarda-voice-macos-universal
-          path: gragarda-voice-macos-universal.zip
+          target: macos-universal
+          config: ${{ needs.check-event.outputs.config }}
+
+      - name: Package Plugin 📀
+        uses: ./.github/actions/package-plugin
+        with:
+          target: macos-universal
+          config: ${{ needs.check-event.outputs.config }}
+          package: ${{ fromJSON(needs.check-event.outputs.package) }}
+
+      - name: Upload Artifacts 📡
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-macos-universal-${{ needs.check-event.outputs.commitHash }}
+          path: ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-macos-universal.*
+
+      - name: Upload Debug Symbol Artifacts 🪲
+        uses: actions/upload-artifact@v4
+        if: ${{ needs.check-event.outputs.config == 'Release' }}
+        with:
+          name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-macos-universal-${{ needs.check-event.outputs.commitHash }}-dSYMs
+          path: ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-macos-universal-dSYMs.*
+
+      - uses: actions/cache/save@v4
+        if: github.event_name != 'pull_request' && steps.ccache-cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ${{ runner.os }}-ccache-${{ needs.check-event.outputs.config }}
+
+  ubuntu-build:
+    name: Build for Ubuntu 🐧
+    strategy:
+      matrix:
+        os: [ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    needs: check-event
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Set Up Environment 🔧
+        id: setup
+        run: |
+          : Set Up Environment 🔧
+          if [[ "${RUNNER_DEBUG}" ]]; then set -x; fi
+
+          read -r product_name product_version <<< \
+            "$(jq -r '. | {name, version} | join(" ")' buildspec.json)"
+
+          echo "pluginName=${product_name}" >> $GITHUB_OUTPUT
+          echo "pluginVersion=${product_version}" >> $GITHUB_OUTPUT
+
+      - uses: actions/cache/restore@v4
+        id: ccache-cache
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ${{ runner.os }}-${{ matrix.os }}-ccache-x86_64-${{ needs.check-event.outputs.config }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.os }}-ccache-x86_64-
+
+      - name: DeepFilterNet (libDF) 🦀
+        run: |
+          git clone https://github.com/Rikorose/DeepFilterNet.git ../DeepFilterNet
+          cd ../DeepFilterNet
+          git checkout ${{ env.DFN_COMMIT }}
+          cargo build --release -p deep_filter --no-default-features --features capi --lib
+
+      - name: Build Plugin 🧱
+        uses: ./.github/actions/build-plugin
+        with:
+          target: x86_64
+          config: ${{ needs.check-event.outputs.config }}
+
+      - name: Package Plugin 📀
+        uses: ./.github/actions/package-plugin
+        with:
+          target: x86_64
+          config: ${{ needs.check-event.outputs.config }}
+          package: ${{ fromJSON(needs.check-event.outputs.package) }}
+
+      - name: Upload Source Tarball 🗜️
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-${{ matrix.os }}-sources-${{ needs.check-event.outputs.commitHash }}
+          path: ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-source.*
+
+      - name: Upload Artifacts 📡
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-${{ matrix.os }}-x86_64-${{ needs.check-event.outputs.commitHash }}
+          path: ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-x86_64*.*
+
+      - name: Upload debug symbol artifacts 🪲
+        uses: actions/upload-artifact@v4
+        if: ${{ fromJSON(needs.check-event.outputs.package) }}
+        with:
+          name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-${{ matrix.os }}-x86_64-${{ needs.check-event.outputs.commitHash }}-dbgsym
+          path: ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-x86_64*-dbgsym.ddeb
+
+      - uses: actions/cache/save@v4
+        if: github.event_name != 'pull_request' && steps.ccache-cache.outputs.cache-hit != 'true'
+        with:
+          path: ${{ github.workspace }}/.ccache
+          key: ${{ runner.os }}-${{ matrix.os }}-ccache-x86_64-${{ needs.check-event.outputs.config }}
 
   windows-build:
-    name: Build for Windows
+    name: Build for Windows 🪟
     runs-on: windows-2022
+    needs: check-event
     defaults:
       run:
         shell: pwsh
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
+          fetch-depth: 0
 
-      - name: libobs ${{ env.OBS_VERSION }} (sources)
+      - name: Set Up Environment 🔧
+        id: setup
         run: |
-          git clone --depth 1 --branch $env:OBS_VERSION --recurse-submodules --shallow-submodules `
-            https://github.com/obsproject/obs-studio.git ../obs-studio
-          cd ../obs-studio
-          # le preset vise VS 2026 par defaut : le runner a VS 2022
-          cmake --preset windows-x64 -G "Visual Studio 17 2022" -DENABLE_BROWSER=OFF -DENABLE_WEBSOCKET=OFF -DENABLE_SCRIPTING=OFF
-          cmake --build --preset windows-x64 --config RelWithDebInfo --target libobs
+          # Set Up Environment 🔧
+          if ( $Env:RUNNER_DEBUG -ne $null ) {
+            Set-PSDebug -Trace 1
+          }
 
-      - name: DeepFilterNet (libDF)
+          $BuildSpec = Get-Content -Path buildspec.json -Raw | ConvertFrom-Json
+          $ProductName = $BuildSpec.name
+          $ProductVersion = $BuildSpec.version
+
+          "pluginName=${ProductName}" >> $env:GITHUB_OUTPUT
+          "pluginVersion=${ProductVersion}" >> $env:GITHUB_OUTPUT
+
+      - name: DeepFilterNet (libDF) 🦀
         run: |
           git clone https://github.com/Rikorose/DeepFilterNet.git ../DeepFilterNet
           cd ../DeepFilterNet
-          git checkout $env:DFN_COMMIT
+          git checkout ${{ env.DFN_COMMIT }}
           cargo build --release -p deep_filter --no-default-features --features capi --lib
 
-      - name: Build + tests
-        run: |
-          $OBS = (Resolve-Path ../obs-studio).Path -replace '\\', '/'
-          $DEPS = (Get-Item "$OBS/.deps/obs-deps-20*-x64").FullName -replace '\\', '/'
-          $QT = (Get-Item "$OBS/.deps/obs-deps-qt6-*-x64").FullName -replace '\\', '/'
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DOBS_DIR="${{ github.workspace }}/pkg" `
-            -DCMAKE_PREFIX_PATH="$OBS/build_x64;$OBS/build_x64/deps/w32-pthreads;$DEPS;$QT" `
-            -DCMAKE_MODULE_PATH="$OBS/cmake/finders"
-          cmake --build build --config RelWithDebInfo
-          ctest --test-dir build -C RelWithDebInfo --output-on-failure
-
-      - name: Paquet (zip + installeur)
-        run: |
-          cmake --install build --config RelWithDebInfo
-          Compress-Archive -Path pkg/* -DestinationPath gragarda-voice-windows-x64.zip
-          iscc installer/gragarda-voice.iss
-          Move-Item build/installer/*-setup.exe .
-
-      - uses: actions/upload-artifact@v4
+      - name: Build Plugin 🧱
+        uses: ./.github/actions/build-plugin
         with:
-          name: gragarda-voice-windows-x64
+          target: x64
+          config: ${{ needs.check-event.outputs.config }}
+
+      - name: Package Plugin 📀
+        uses: ./.github/actions/package-plugin
+        with:
+          target: x64
+          config: ${{ needs.check-event.outputs.config }}
+          package: ${{ fromJSON(needs.check-event.outputs.package) }}
+
+      - name: Installer (Inno Setup) 💿
+        run: |
+          iscc /DConfig=${{ needs.check-event.outputs.config }} installer/gragarda-voice.iss
+
+      - name: Upload Artifacts 📡
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-x64-${{ needs.check-event.outputs.commitHash }}
           path: |
-            gragarda-voice-windows-x64.zip
-            *-setup.exe
+            ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-windows-x64*.*
+            ${{ github.workspace }}/release/${{ steps.setup.outputs.pluginName }}-${{ steps.setup.outputs.pluginVersion }}-setup.exe

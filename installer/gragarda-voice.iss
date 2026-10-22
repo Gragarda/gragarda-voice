@@ -1,8 +1,11 @@
-; Installeur Gragarda Voice (Inno Setup 6). Build : ISCC installer\gragarda-voice.iss  (apres cmake --build)
+﻿; Installeur Gragarda Voice (Inno Setup 6). Build : ISCC installer\gragarda-voice.iss  (apres cmake --build)
 ; Installe dans le dossier d'OBS trouve dans le registre (HKLM\SOFTWARE\OBS Studio), modifiable par l'utilisateur.
 
 #define AppVersion "0.5.0"
-#define Build "..\build\RelWithDebInfo"
+#ifndef Config
+  #define Config "RelWithDebInfo"
+#endif
+#define Build "..\build_x64\" + Config
 #define Model "..\..\DeepFilterNet\models\DeepFilterNet3_onnx.tar.gz"
 
 [Setup]
@@ -15,7 +18,7 @@ LicenseFile=..\LICENSE
 DefaultDirName={code:ObsDir}
 DirExistsWarning=no
 DisableProgramGroupPage=yes
-OutputDir=..\build\installer
+OutputDir=..\release
 OutputBaseFilename=gragarda-voice-{#AppVersion}-setup
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible

@@ -22,7 +22,7 @@ on several microphones. The translations were also produced with AI. The noise-r
 Bugs or doubts? Please open an [issue](../../issues).
 
 ## Features
-- **AI noise removal**: DeepFilterNet 3 (Max quality, 41.5 ms) or RNNoise (Fast, 21.5 ms). Fixed, displayed latency.
+- **AI noise removal**: DeepFilterNet 3 (Max quality, 51.5 ms) or RNNoise (Fast, 31.5 ms). Fixed, displayed latency.
 - **Full chain**: high-pass, corrective EQ, compressor, de-esser, tone EQ, leveler (LUFS target), −1 dBFS look-ahead limiter.
 - **4 macros** (Cleanup, Warmth, Clarity, Punch) + **destination** (Stream −14, Podcast −16, Voice-over −18 LUFS).
 - **Calibration wizard**: 5 s of silence + 15 s of reading → gain, automatic mic correction,
@@ -51,24 +51,14 @@ A preset is reloaded only when its name changes: after tweaking, switch to anoth
 ## Development
 
 Chain: trim, high-pass, noise removal, subtractive EQ, compressor, de-esser, additive EQ, leveler, 1.5 ms look-ahead limiter.
-Fixed latency per mode: Max quality 1992 samples (41.5 ms), Fast 1032 (21.5 ms).
+Fixed latency per mode: Max quality 2472 samples (51.5 ms), Fast 1512 (31.5 ms).
 The DSP core lives in the [gragarda-voice-core](https://github.com/Gragarda/gragarda-voice-core) submodule (`core/`): clone with `git clone --recursive`, or run `git submodule update --init`.
 RNNoise is copied into `core/third_party/rnnoise` from obs-studio. DeepFilterNet (libDF) is statically linked;
 its model is installed in `data/obs-plugins/gragarda-voice/models`.
-Qt 6 comes from the obs-deps (`.deps/obs-deps-qt6-*`), add it to CMAKE_PREFIX_PATH.
 The DSP core does not depend on OBS; it is also used by [gragarda-voice-vst](https://github.com/Gragarda/gragarda-voice-vst).
 
 ### Prerequisites
-- Visual Studio 2022 ("Desktop development with C++" workload); its CMake is enough (run from an "x64 Native Tools Command Prompt")
-- OBS built from source (libobs only), same version as the installed OBS (here 32.2.2),
-  cloned next to the project in `../obs-studio`:
-  ```
-  git clone --depth 1 --branch 32.2.2 --recurse-submodules --shallow-submodules https://github.com/obsproject/obs-studio.git
-  cd obs-studio
-  cmake --preset windows-x64 -G "Visual Studio 17 2022" -DENABLE_BROWSER=OFF -DENABLE_WEBSOCKET=OFF -DENABLE_SCRIPTING=OFF
-  cmake --build --preset windows-x64 --config RelWithDebInfo --target libobs
-  ```
-  (the preset targets VS 2026 by default, hence the `-G`)
+- Visual Studio 2022 ("Desktop development with C++" workload, Windows SDK 10.0.22621) and CMake 3.28+
 - Rust (rustup, msvc toolchain) and DeepFilterNet cloned next to the project in `../DeepFilterNet`:
   ```
   git clone https://github.com/Rikorose/DeepFilterNet.git
@@ -79,23 +69,22 @@ The DSP core does not depend on OBS; it is also used by [gragarda-voice-vst](htt
   ```
 
 ### Build
-OBS_DIR defaults to `C:/Program Files/obs-studio` (pass `-DOBS_DIR=...` if OBS is elsewhere).
+The build follows [obs-plugintemplate](https://github.com/obsproject/obs-plugintemplate): `buildspec.json` pins OBS (32.2.2)
+and its pre-built dependencies (obs-deps, Qt 6). The first configure downloads them into `.deps/` and builds libobs.
 ```
-set OBS=%CD%/../obs-studio
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64 ^
-  -DCMAKE_PREFIX_PATH="%OBS%/build_x64;%OBS%/build_x64/deps/w32-pthreads;%OBS%/.deps/obs-deps-2026-07-15-x64;%OBS%/.deps/obs-deps-qt6-2026-07-15-x64" ^
-  -DCMAKE_MODULE_PATH="%OBS%/cmake/finders"
-cmake --build build --config RelWithDebInfo
-ctest --test-dir build -C RelWithDebInfo
-cmake --install build --config RelWithDebInfo     (admin terminal, OBS closed)
+cmake --preset windows-x64
+cmake --build --preset windows-x64
+cmake --install build_x64 --prefix release/RelWithDebInfo
 ```
+→ `release/RelWithDebInfo/gragarda-voice/{bin/64bit,data}`, to copy into `C:\ProgramData\obs-studio\plugins\`.
+macOS (`--preset macos`) and Ubuntu (`--preset ubuntu-x86_64`) work the same way; see `.github/workflows/build-project.yaml`.
 
 ### Installer
 Inno Setup 6 (`winget install JRSoftware.InnoSetup`), after the build:
 ```
 ISCC installer\gragarda-voice.iss
 ```
-→ `build/installer/gragarda-voice-<version>-setup.exe`. It finds OBS through the registry and refuses to run while OBS is open.
+→ `release/gragarda-voice-<version>-setup.exe`. It finds OBS through the registry and refuses to run while OBS is open.
 Rust crate licenses (regenerate if DeepFilterNet changes): `cargo install cargo-about --features cli`, then in
 `../DeepFilterNet/libDF`: `cargo about generate --no-default-features --features capi <template.hbs> -o licenses/rust-crates.txt`.
 
@@ -147,7 +136,7 @@ dans OBS sur plusieurs micros. Les traductions ont aussi été produites avec l'
 Un bug ou un doute ? Ouvrez une [issue](../../issues).
 
 ## Fonctionnalités
-- **Débruitage IA** : DeepFilterNet 3 (Qualité max, 41,5 ms) ou RNNoise (Rapide, 21,5 ms). Latence fixe et affichée.
+- **Débruitage IA** : DeepFilterNet 3 (Qualité max, 51,5 ms) ou RNNoise (Rapide, 31,5 ms). Latence fixe et affichée.
 - **Chaîne complète** : passe-haut, EQ correctif, compresseur, de-esser, EQ de couleur, leveler (cible LUFS), limiteur à anticipation −1 dBFS.
 - **4 macros** (Nettoyage, Chaleur, Clarté, Punch) + **destination** (Stream −14, Podcast −16, Voix-off −18 LUFS).
 - **Assistant de calibration** : 5 s de silence + 15 s de lecture → gain, correction automatique du micro,
@@ -176,24 +165,14 @@ Un preset n'est rechargé que si son nom change : après des retouches, passer s
 ## Développement
 
 Chaîne : trim, passe-haut, débruitage, EQ soustractif, compresseur, de-esser, EQ additif, leveler, limiteur à anticipation 1,5 ms.
-Latence fixe par mode : Qualité max 1992 échantillons (41,5 ms), Rapide 1032 (21,5 ms).
+Latence fixe par mode : Qualité max 2472 échantillons (51,5 ms), Rapide 1512 (31,5 ms).
 Le cœur DSP est dans le submodule [gragarda-voice-core](https://github.com/Gragarda/gragarda-voice-core) (`core/`) : cloner avec `git clone --recursive`, ou lancer `git submodule update --init`.
 RNNoise est copié dans `core/third_party/rnnoise` depuis obs-studio. DeepFilterNet (libDF) est lié statiquement ;
 son modèle est installé dans `data/obs-plugins/gragarda-voice/models`.
-Qt 6 vient des obs-deps (`.deps/obs-deps-qt6-*`), à ajouter à CMAKE_PREFIX_PATH.
 Le cœur DSP ne dépend pas d'OBS ; il sert aussi à [gragarda-voice-vst](https://github.com/Gragarda/gragarda-voice-vst).
 
 ### Prérequis
-- Visual Studio 2022 (charge « Développement desktop C++ ») ; son CMake suffit (lancer depuis un « x64 Native Tools Command Prompt »)
-- Sources d'OBS compilées (libobs seulement), même version que l'OBS installé (ici 32.2.2),
-  clonées à côté du projet dans `../obs-studio` :
-  ```
-  git clone --depth 1 --branch 32.2.2 --recurse-submodules --shallow-submodules https://github.com/obsproject/obs-studio.git
-  cd obs-studio
-  cmake --preset windows-x64 -G "Visual Studio 17 2022" -DENABLE_BROWSER=OFF -DENABLE_WEBSOCKET=OFF -DENABLE_SCRIPTING=OFF
-  cmake --build --preset windows-x64 --config RelWithDebInfo --target libobs
-  ```
-  (le preset vise VS 2026 par défaut, d'où le `-G`)
+- Visual Studio 2022 (charge « Développement desktop C++ », SDK Windows 10.0.22621) et CMake 3.28+
 - Rust (rustup, toolchain msvc) et DeepFilterNet cloné à côté du projet dans `../DeepFilterNet` :
   ```
   git clone https://github.com/Rikorose/DeepFilterNet.git
@@ -204,23 +183,22 @@ Le cœur DSP ne dépend pas d'OBS ; il sert aussi à [gragarda-voice-vst](https:
   ```
 
 ### Build
-OBS_DIR vaut `C:/Program Files/obs-studio` par défaut (passer `-DOBS_DIR=...` si OBS est ailleurs).
+Le build suit [obs-plugintemplate](https://github.com/obsproject/obs-plugintemplate) : `buildspec.json` fixe OBS (32.2.2)
+et ses dépendances précompilées (obs-deps, Qt 6). La première configuration les télécharge dans `.deps/` et compile libobs.
 ```
-set OBS=%CD%/../obs-studio
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64 ^
-  -DCMAKE_PREFIX_PATH="%OBS%/build_x64;%OBS%/build_x64/deps/w32-pthreads;%OBS%/.deps/obs-deps-2026-07-15-x64;%OBS%/.deps/obs-deps-qt6-2026-07-15-x64" ^
-  -DCMAKE_MODULE_PATH="%OBS%/cmake/finders"
-cmake --build build --config RelWithDebInfo
-ctest --test-dir build -C RelWithDebInfo
-cmake --install build --config RelWithDebInfo     (terminal admin, OBS fermé)
+cmake --preset windows-x64
+cmake --build --preset windows-x64
+cmake --install build_x64 --prefix release/RelWithDebInfo
 ```
+→ `release/RelWithDebInfo/gragarda-voice/{bin/64bit,data}`, à copier dans `C:\ProgramData\obs-studio\plugins\`.
+macOS (`--preset macos`) et Ubuntu (`--preset ubuntu-x86_64`) fonctionnent pareil ; voir `.github/workflows/build-project.yaml`.
 
 ### Installeur
 Inno Setup 6 (`winget install JRSoftware.InnoSetup`), après le build :
 ```
 ISCC installer\gragarda-voice.iss
 ```
-→ `build/installer/gragarda-voice-<version>-setup.exe`. Il trouve OBS via le registre et refuse de s'exécuter si OBS est ouvert.
+→ `release/gragarda-voice-<version>-setup.exe`. Il trouve OBS via le registre et refuse de s'exécuter si OBS est ouvert.
 Licences des crates Rust (à régénérer si DeepFilterNet change) : `cargo install cargo-about --features cli`, puis dans
 `../DeepFilterNet/libDF` : `cargo about generate --no-default-features --features capi <template.hbs> -o licenses/rust-crates.txt`.
 
