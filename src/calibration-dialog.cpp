@@ -1,6 +1,7 @@
 // Assistant de calibration (Qt). Ouvert depuis le bouton du panneau, thread UI.
 #include <obs-module.h>
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDialog>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -219,10 +220,9 @@ void gv_open_calibration(obs_source_t *src, std::shared_ptr<Capture> cap, double
 // Options avancees : chaque etage de la chaine peut etre coupe. Applique tout de suite, garde dans les reglages.
 void gv_open_advanced(obs_source_t *src)
 {
-	static const char *kStages[][2] = {{"st_hpf", "StageHpf"},         {"st_dereverb", "StageDereverb"},
-					   {"st_eq", "StageEq"},           {"st_compressor", "StageCompressor"},
-					   {"st_deesser", "StageDeesser"}, {"st_leveler", "StageLeveler"},
-					   {"st_limiter", "StageLimiter"}};
+	static const char *kStages[][2] = {
+		{"st_hpf", "StageHpf"},         {"st_eq", "StageEq"},           {"st_compressor", "StageCompressor"},
+		{"st_deesser", "StageDeesser"}, {"st_leveler", "StageLeveler"}, {"st_limiter", "StageLimiter"}};
 	auto *d = new QDialog;
 	d->setWindowTitle(T("AdvancedTitle"));
 	d->setAttribute(Qt::WA_DeleteOnClose);
@@ -232,19 +232,34 @@ void gv_open_advanced(obs_source_t *src)
 	lay->addWidget(intro);
 	obs_weak_source_t *weak = obs_source_get_weak_source(src);
 	obs_data_t *s = obs_source_get_settings(src);
+	auto set = [weak](const char *key, auto apply) {
+		if (obs_source_t *f = obs_weak_source_get_source(weak)) {
+			obs_data_t *v = obs_source_get_settings(f);
+			apply(v, key);
+			obs_source_update(f, v);
+			obs_data_release(v);
+			obs_source_release(f);
+		}
+	};
+	// De-reverb : Auto (calibration) ou force a la main
+	auto *drRow = new QHBoxLayout;
+	auto *dr = new QComboBox;
+	for (const char *k : {"DereverbAuto", "DereverbOff", "DereverbLight", "DereverbMedium", "DereverbStrong"})
+		dr->addItem(T(k));
+	dr->setCurrentIndex((int)obs_data_get_int(s, "dereverb_mode"));
+	drRow->addWidget(new QLabel(T("StageDereverb")));
+	drRow->addWidget(dr, 1);
+	lay->addLayout(drRow);
+	QObject::connect(dr, &QComboBox::currentIndexChanged, d, [set](int i) {
+		set("dereverb_mode", [i](obs_data_t *v, const char *k) { obs_data_set_int(v, k, i); });
+	});
 	for (const auto &st : kStages) {
 		auto *cb = new QCheckBox(T(st[1]));
 		cb->setChecked(obs_data_get_bool(s, st[0]));
 		lay->addWidget(cb);
 		const char *key = st[0];
-		QObject::connect(cb, &QCheckBox::toggled, d, [weak, key](bool on) {
-			if (obs_source_t *f = obs_weak_source_get_source(weak)) {
-				obs_data_t *v = obs_source_get_settings(f);
-				obs_data_set_bool(v, key, on);
-				obs_source_update(f, v);
-				obs_data_release(v);
-				obs_source_release(f);
-			}
+		QObject::connect(cb, &QCheckBox::toggled, d, [set, key](bool on) {
+			set(key, [on](obs_data_t *v, const char *k) { obs_data_set_bool(v, k, on); });
 		});
 	}
 	obs_data_release(s);

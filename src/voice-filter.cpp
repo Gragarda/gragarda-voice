@@ -32,9 +32,9 @@ void gv_open_advanced(obs_source_t *src);
 #define S_PRESET_DEL  "preset_delete"
 
 // Ce qu'un preset retient (tout le son, sauf Avant/Apres)
-static const char *kPresetKeys[] = {"gain_db",       "denoise",       "engine",      "m_clean",     "m_warmth",
-				    "m_clarity",     "m_punch",       "destination", "corr_low",    "corr_presence",
-				    "corr_air",      "dereverb_rt60", "st_hpf",      "st_dereverb", "st_eq",
+static const char *kPresetKeys[] = {"gain_db",       "denoise",       "engine",      "m_clean",       "m_warmth",
+				    "m_clarity",     "m_punch",       "destination", "corr_low",      "corr_presence",
+				    "corr_air",      "dereverb_rt60", "st_hpf",      "dereverb_mode", "st_eq",
 				    "st_compressor", "st_deesser",    "st_leveler",  "st_limiter"};
 
 struct VoiceFilter {
@@ -164,11 +164,15 @@ static void vf_update(void *data, obs_data_t *settings)
 	m.corrLow = (float)obs_data_get_double(settings, "corr_low"); // poses par la calibration, pas d'UI
 	m.corrPresence = (float)obs_data_get_double(settings, "corr_presence");
 	m.corrAir = (float)obs_data_get_double(settings, "corr_air");
-	m.rt60 = (float)obs_data_get_double(settings, "dereverb_rt60");
+	// De-reverb : Auto = RT60 pose par la calibration, sinon force a la main (Coupe / Leger / Moyen / Fort)
+	static const float kModeRt60[] = {0.0f, 0.0f, 0.4f, 0.7f, 1.0f};
+	const int drMode = (int)obs_data_get_int(settings, "dereverb_mode");
+	m.rt60 = drMode == 0 ? (float)obs_data_get_double(settings, "dereverb_rt60")
+			     : kModeRt60[drMode >= 1 && drMode <= 4 ? drMode : 1];
 	vf->chain.setMacros(m);
 	VoiceChain::Stages st;
 	st.hpf = obs_data_get_bool(settings, "st_hpf");
-	st.dereverb = obs_data_get_bool(settings, "st_dereverb");
+	st.dereverb = drMode != 1;
 	st.eq = obs_data_get_bool(settings, "st_eq");
 	st.compressor = obs_data_get_bool(settings, "st_compressor");
 	st.deesser = obs_data_get_bool(settings, "st_deesser");
@@ -222,8 +226,7 @@ static void vf_defaults(obs_data_t *settings)
 	for (const char *k : {S_CLEAN, S_WARMTH, S_CLARITY, S_PUNCH})
 		obs_data_set_default_int(settings, k, 50);
 	obs_data_set_default_int(settings, S_DEST, VoiceChain::Stream);
-	for (const char *k :
-	     {"st_hpf", "st_dereverb", "st_eq", "st_compressor", "st_deesser", "st_leveler", "st_limiter"})
+	for (const char *k : {"st_hpf", "st_eq", "st_compressor", "st_deesser", "st_leveler", "st_limiter"})
 		obs_data_set_default_bool(settings, k, true);
 }
 
