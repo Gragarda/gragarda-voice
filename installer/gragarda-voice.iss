@@ -1,7 +1,7 @@
 ﻿; Installeur Gragarda Voice (Inno Setup 6). Build : ISCC installer\gragarda-voice.iss  (apres cmake --build)
 ; Installe dans le dossier d'OBS trouve dans le registre (HKLM\SOFTWARE\OBS Studio), modifiable par l'utilisateur.
 
-#define AppVersion "0.5.0"
+#define AppVersion "0.6.0"
 #ifndef Config
   #define Config "RelWithDebInfo"
 #endif
