@@ -8,13 +8,13 @@ void gragarda_voice_register_info();
 
 bool obs_module_load(void)
 {
-    gragarda_voice_register_info();
-    obs_register_source(&gragarda_voice_filter_info);
-    blog(LOG_INFO, "[gragarda-voice] charge (v0.6.0)");
-    return true;
+	gragarda_voice_register_info();
+	obs_register_source(&gragarda_voice_filter_info);
+	blog(LOG_INFO, "[gragarda-voice] charge (v0.6.0)");
+	return true;
 }
 
 void obs_module_unload(void)
 {
-    blog(LOG_INFO, "[gragarda-voice] decharge");
+	blog(LOG_INFO, "[gragarda-voice] decharge");
 }
