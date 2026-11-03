@@ -118,6 +118,8 @@ Rust dependencies — see `licenses/`.
 
 🇬🇧 [English version](#gragarda-voice--all-in-one-voice-filter-for-obs-windows)
 
+**Gragarda Voice :** **Filtre OBS** · [VST3 / autonome](https://github.com/Gragarda/gragarda-voice-vst) · [Application web](https://github.com/Gragarda/gragarda-voice-web) · [Cœur DSP](https://github.com/Gragarda/gragarda-voice-core)
+
 [![Me soutenir sur Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/gragarda)
 
 Gragarda Voice est gratuit et open source. S'il vous est utile, vous pouvez soutenir son développement sur [Ko-fi](https://ko-fi.com/gragarda).
