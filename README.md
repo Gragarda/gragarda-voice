@@ -1,5 +1,7 @@
 # Gragarda Voice — all-in-one voice filter for OBS (Windows)
 
+**Gragarda Voice:** **OBS filter** · [VST3 / standalone](https://github.com/Gragarda/gragarda-voice-vst) · [Web app](https://github.com/Gragarda/gragarda-voice-web) · [DSP core](https://github.com/Gragarda/gragarda-voice-core)
+
 🇫🇷 [Version française](#version-française)
 
 [![Support me on Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/gragarda)
@@ -115,6 +117,8 @@ Rust dependencies — see `licenses/`.
 # Version française
 
 🇬🇧 [English version](#gragarda-voice--all-in-one-voice-filter-for-obs-windows)
+
+**Gragarda Voice :** **Filtre OBS** · [VST3 / autonome](https://github.com/Gragarda/gragarda-voice-vst) · [Application web](https://github.com/Gragarda/gragarda-voice-web) · [Cœur DSP](https://github.com/Gragarda/gragarda-voice-core)
 
 [![Me soutenir sur Ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/gragarda)
 
